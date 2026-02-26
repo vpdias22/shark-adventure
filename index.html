@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Shark Adventure - Projeto Final</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #000; font-family: 'Arial', sans-serif; }
+        canvas { border: 3px solid #fff; background-color: #0077be; }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = 400;
+canvas.height = 600;
+
+// --- CARREGAMENTO DE IMAGENS ---
+const imgTubarao = new Image();
+imgTubarao.src = 'tubarao.png'; 
+
+const imgCoral = new Image();
+imgCoral.src = 'coral.png'; 
+
+let obstaculos = []; 
+let cenaAtual = "INICIO"; 
+let pontuacao = 0;        
+let frames = 0;
+
+const shark = {
+    x: 50,
+    y: 50,
+    largura: 60, // Ajustado para a imagem
+    altura: 45,  // Ajustado para a imagem
+    gravidade: 0.25,
+    impulso: -5,
+    velocidade: 0,
+    
+    atualizar() {
+        if (cenaAtual === "JOGO") {
+            this.velocidade += this.gravidade;
+            this.y += this.velocidade;
+            
+            // Colisão com teto ou chão
+            if (this.y < 0 || this.y + this.altura > canvas.height) {
+                reiniciarJogo();
+            }
+        }
+    },
+
+    desenhar() {
+        // Substituído o retângulo pela imagem do tubarão
+        ctx.drawImage(imgTubarao, this.x, this.y, this.largura, this.altura);
+    }
+};
+
+function gerenciarObstaculos() {
+    if (frames % 100 === 0) {
+        let alturaVao = Math.random() * (canvas.height - 300) + 50;
+        obstaculos.push({
+            x: canvas.width,
+            y: alturaVao,
+            largura: 60,
+            espaco: 180, // Vão um pouco maior para facilitar
+            passou: false
+        });
+    }
+
+    obstaculos.forEach((obs, index) => {
+        obs.x -= 3;
+
+        // Desenhar Coral de cima (invertido verticalmente para parecer que vem do teto)
+        ctx.save();
+        ctx.translate(obs.x + obs.largura, obs.y);
+        ctx.scale(-1, -1);
+        ctx.drawImage(imgCoral, 0, 0, obs.largura, obs.y);
+        ctx.restore();
+
+        // Desenhar Coral de baixo
+        ctx.drawImage(imgCoral, obs.x, obs.y + obs.espaco, obs.largura, canvas.height - (obs.y + obs.espaco));
+
+        // Colisão com as imagens
+        if (shark.x < obs.x + obs.largura &&
+            shark.x + shark.largura > obs.x &&
+            (shark.y < obs.y || shark.y + shark.altura > obs.y + obs.espaco)) {
+            reiniciarJogo();
+        }
+
+        if (!obs.passou && obs.x + obs.largura < shark.x) {
+            pontuacao++;
+            obs.passou = true;
+        }
+
+        if (obs.x + obs.largura < 0) obstaculos.splice(index, 1);
+    });
+}
+
+function reiniciarJogo() {
+    cenaAtual = "INICIO";
+    shark.y = 50;
+    shark.velocidade = 0;
+    obstaculos = [];
+    pontuacao = 0;
+}
+
+function desenharCenas() {
+    if (cenaAtual === "INICIO") {
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.font = "bold 24px Arial";
+        ctx.fillText("SHARK ADVENTURE", canvas.width / 2, 200);
+        ctx.font = "18px Arial";
+        ctx.fillText("Pressione ESPAÇO para Nadar", canvas.width / 2, 300);
+    } else if (cenaAtual === "JOGO") {
+        gerenciarObstaculos();
+        shark.atualizar();
+        ctx.fillStyle = "white";
+        ctx.font = "bold 25px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText(`Pontos: ${pontuacao}`, 20, 40);
+    }
+}
+
+window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+        if (cenaAtual === "INICIO") {
+            cenaAtual = "JOGO";
+        }
+        shark.velocidade = shark.impulso;
+    }
+});
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    desenharCenas();
+    shark.desenhar();
+    frames++;
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
